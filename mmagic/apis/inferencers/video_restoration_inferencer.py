@@ -110,17 +110,16 @@ class VideoRestorationInferencer(BaseMMagicInferencer):
         with torch.no_grad():
             if self.extra_parameters[
                     'window_size'] > 0:  # sliding window framework
-                data = pad_sequence(inputs,
-                                    self.extra_parameters['window_size'])
+                window_size = self.extra_parameters['window_size']
+                assert window_size % 2 == 1, 'window size should be odd'
+                data = pad_sequence(inputs, window_size).contiguous()
                 result = []
                 # yapf: disable
-                for i in range(0, data.size(1) - 2 * (self.extra_parameters['window_size'] // 2)):  # noqa
+                for i in range(0, data.size(1) - 2 * (window_size // 2)):  # noqa
                     # yapf: enable
-                    data_i = data[:, i:i +
-                                  self.extra_parameters['window_size']].to(
-                                      self.device)
+                    data_i = data[:, i:i + window_size].to(self.device)
                     result.append(
-                        self.model(inputs=data_i, mode='tensor').cpu())
+                        self.model(inputs=data_i, mode='tensor')[:, window_size//2].cpu())
                 result = torch.stack(result, dim=1)
             else:  # recurrent framework
                 if self.extra_parameters['max_seq_len'] is None:
